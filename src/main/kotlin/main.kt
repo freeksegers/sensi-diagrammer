@@ -26,12 +26,12 @@ fun main(args: Array<String>) {
     print("Lettergrootte? [12] ")
     val fontSize: Int = readLine()?.toIntOrNull() ?: 12
 
-    println("""> Woorden voor de binnenkant?""")
-    val innerWords = generateSequence(::readWord).toList();
+    println("> Woorden voor de binnenkant?")
+    val innerWords = generateSequence(::readWord).toList()
     println("> Woorden voor de buitenkant?")
-    val outerWords = generateSequence(::readWord).toList();
+    val outerWords = generateSequence(::readWord).toList()
     println("> Tussenwoorden voor de buitenkant?")
-    val outerSubWords = generateSequence(::readWord).toList();
+    val outerSubWords = generateSequence(::readWord).toList()
 
     val words: Array<Array<String?>> = getWords(innerWords, outerWords, outerSubWords)
 
@@ -70,7 +70,6 @@ fun writeSvg(
     val n = words.size
     val angleDeg: Double = 360.0 / n
     val width = innerRadius * tan(PI / n)
-    val brim = outerRadius - innerRadius
     val canvasSize: Int = (3.5 * outerRadius).toInt()
 
     println(
@@ -88,21 +87,18 @@ fun writeSvg(
         |  height="100%" 
         |  viewBox="0 0 $canvasSize $canvasSize">
         |    <defs>
-        |      <path id="kite" stroke="black" stroke-width="1px" fill="none"
-        |            d="M 0 0 l$innerRadius,${-width} $brim,$width ${-brim},$width z" />
         |    </defs>
         |    <style>
         |      .innerText { font: ${fontSize}px sans-serif; }
         |      .debug { display: none; }
         |    </style>
-        |    <rect class="debug" width="100%" height="100%" fill="gray"/>
         |    <g transform="translate(${canvasSize / 2},${canvasSize / 2})">
         |""".trimMargin()
     )
 
-    writeKite(writer, canvasSize, outerRadius, innerRadius, width, angleDeg, words[0])
+    writeKite(writer, canvasSize, outerRadius, innerRadius, width, angleDeg, 0, words[0])
     for (i in 1 until n) {
-        writeRotatedKite(writer, i, canvasSize, outerRadius, innerRadius, width, angleDeg, words[i])
+        writeRotatedKite(writer, i, canvasSize, outerRadius, innerRadius, width, angleDeg, i, words[i])
     }
     writer.println("</g></svg>")
 }
@@ -114,27 +110,29 @@ fun writeKite(
     innerRadius: Int,
     width: Double,
     angle: Double,
+    index: Int,
     words: Array<String?>
 ) {
-    writer.println("""    <use xlink:href="#kite" x="0" y="0" />""")
-    writer.println(
-        """
+    val brim: Int = outerRadius - innerRadius
+
+    writer.println("""
+    |    <path id="kite$index" stroke="black" stroke-width="1px" fill="none"
+    |               d="M 0 0 l$innerRadius,${-width} $brim,$width ${-brim},$width z" />
+    |""".trimMargin())
+    writer.println("""
     |    <!-- A 2nd canvas that is pulled half the width up. To get the text properly aligned. -->
     |    <g transform="translate(0,${-width})">
     |      <svg width="${canvasSize / 2}" height="${2 * width}">
     |        <!-- The inner word -->
-    |        <rect class="debug" x="0" y="0" width="$outerRadius" height="${2 * width}" fill="none" stroke="red" stroke-width="1px"/>
     |        <text x="$innerRadius" y="50%" class="innerText" dominant-baseline="middle" text-anchor="end">${words[0]}</text>
     |""".trimMargin()
     )
     // Outer word
     if (words[1] != "") {
-        writer.println(
-            """
+        writer.println("""
     |        <!-- The outer word -->
-    |        <rect class="debug" x="$outerRadius" y="0" width="${canvasSize / 2 - outerRadius}" height="${2 * width}" fill="none" stroke="blue" stroke-width="1px"/>
     |        <text x="${2 * outerRadius - innerRadius}" y="50%" class="innerText" dominant-baseline="middle">${words[1]}</text>            
-        """.trimMargin()
+    |""".trimMargin()
         )
     }
     writer.println("""
@@ -145,17 +143,15 @@ fun writeKite(
 
     // Outer sub word, rotated by a half angle
     if (words[2] != "") {
-        writer.println(
-            """
+        writer.println("""
     |        <!-- A 3rd canvas. Same as the 2nd, but this one is first rotated by half the rotation angle of the kites. -->
     |        <g transform="rotate(${angle / 2}) translate(0,${-width})">
     |          <svg width="${canvasSize / 2}" height="${2 * width}">
     |            <!-- The outer sub word -->
-    |            <rect class="debug" x="$outerRadius" y="0" width="${canvasSize / 2 - outerRadius}" height="${2 * width}" fill="none" stroke="green" stroke-width="1px"/>
     |            <text x="${2 * outerRadius - innerRadius}" y="50%" class="innerText" dominant-baseline="middle">${words[2]}</text>
     |          </svg>
     |        </g>
-        """.trimMargin()
+    |""".trimMargin()
         )
     }
 }
@@ -168,10 +164,11 @@ fun writeRotatedKite(
     innerRadius: Int,
     width: Double,
     angle: Double,
+    index: Int,
     words: Array<String?>
 ) {
     writer.println("""    <g transform ="rotate(${step * angle})">""")
-    writeKite(writer, canvasSize, outerRadius, innerRadius, width, angle, words)
+    writeKite(writer, canvasSize, outerRadius, innerRadius, width, angle, index, words)
     writer.println("    </g>")
 }
 
